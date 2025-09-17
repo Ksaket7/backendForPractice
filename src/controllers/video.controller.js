@@ -110,10 +110,10 @@ const getVideoById = asyncHandler(async (req, res) => {
 
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  if (isValidObjectId(videoId)) {
+  if (!isValidObjectId(videoId)) {
     throw new ApiError(400, "Invalid video ID");
   }
-  const video = Video.findById(videoId);
+  const video = await Video.findById(videoId);
   if (!video) {
     throw new ApiError(404, "Video not found");
   }
@@ -121,8 +121,8 @@ const updateVideo = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You are not allowed to update this video");
   }
   const { title, description } = req.body;
-  if (req.files?.thumbnail) {
-    const thumbnailPath = req.files.thumbnail[0].path;
+  if (req.file) {
+    const thumbnailPath = req.file.path;
     const thumbnailUpload = await uploadOnCloudinary(thumbnailPath);
     if (!thumbnailUpload) {
       throw new ApiError(500, "Error while uploading thumbnail");
@@ -131,16 +131,6 @@ const updateVideo = asyncHandler(async (req, res) => {
     video.thumbnailPublicId = thumbnailUpload.public_id;
   }
 
-  if (req.files?.videoFile) {
-    const videoFilePath = req.files.videoFile[0].path;
-    const videoUpload = await uploadOnCloudinary(videoFilePath);
-    if (!videoUpload) {
-      throw new ApiError(500, "Error while uploading video");
-    }
-    video.videoFile = videoUpload.url;
-    videoFilePublicId = videoUpload.public_id;
-    video.duration = videoUpload.duration || 0;
-  }
   if (title) {
     video.title = title;
   }
@@ -150,7 +140,7 @@ const updateVideo = asyncHandler(async (req, res) => {
   await video.save();
 
   return res
-    .statsu(200)
+    .status(200)
     .json(new ApiResponse(200, video, "Video updated successfully"));
 });
 
